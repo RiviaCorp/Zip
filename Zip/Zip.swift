@@ -81,8 +81,19 @@ public struct ArchiveFile {
 
 /// Zip class
 public class Zip {
-    /// Set of vaild file extensions
-    static var customFileExtensions: Set<String> = []
+    private static let customFileExtensions: CustomFileExtensions = .init()
+
+    // All access to the set takes the same lock, keeping the synchronous API safe to share.
+    private final class CustomFileExtensions: @unchecked Sendable {
+        private let lock: NSLock = .init()
+        private var values: Set<String> = []
+
+        func withLock<Result>(_ body: (inout Set<String>) -> Result) -> Result {
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            return body(&self.values)
+        }
+    }
 
     // MARK: Lifecycle
 
@@ -608,14 +619,18 @@ public class Zip {
     ///
     /// - parameter fileExtension: A file extension.
     public class func addCustomFileExtension(_ fileExtension: String) {
-        self.customFileExtensions.insert(fileExtension)
+        self.customFileExtensions.withLock { extensions in
+            _ = extensions.insert(fileExtension)
+        }
     }
 
     /// Remove a file extension from the set of custom file extensions
     ///
     /// - parameter fileExtension: A file extension.
     public class func removeCustomFileExtension(_ fileExtension: String) {
-        self.customFileExtensions.remove(fileExtension)
+        self.customFileExtensions.withLock { extensions in
+            _ = extensions.remove(fileExtension)
+        }
     }
 
     /// Check if a specific file extension is valid
@@ -624,8 +639,9 @@ public class Zip {
     ///
     /// - returns: true if the extension valid, otherwise false.
     public class func isValidFileExtension(_ fileExtension: String) -> Bool {
-        let validFileExtensions: Set<String> = self.customFileExtensions.union(["zip", "cbz"])
-
-        return validFileExtensions.contains(fileExtension)
+        self.customFileExtensions.withLock { extensions in
+            let validFileExtensions: Set<String> = extensions.union(["zip", "cbz"])
+            return validFileExtensions.contains(fileExtension)
+        }
     }
 }
