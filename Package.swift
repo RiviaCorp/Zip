@@ -1,11 +1,20 @@
-// swift-tools-version:5.1
-// The swift-tools-version declares the minimum version of Swift required to build this package.
+// swift-tools-version: 6.3
+
 import PackageDescription
 
-let package = Package(
+let swiftSettings: [SwiftSetting] = [
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("InferIsolatedConformances"),
+    .enableUpcomingFeature("ImmutableWeakCaptures"),
+    .enableUpcomingFeature("InternalImportsByDefault"),
+    .enableUpcomingFeature("MemberImportVisibility"),
+    .swiftLanguageMode(.v6),
+]
+
+let package: Package = .init(
     name: "Zip",
     products: [
-        .library(name: "Zip", targets: ["Zip"])
+        .library(name: "Zip", targets: ["Zip"]),
     ],
     targets: [
         .target(
@@ -14,16 +23,21 @@ let package = Package(
             path: "Zip/minizip",
             exclude: ["module"],
             linkerSettings: [
-                .linkedLibrary("z")
-            ]),
+                .linkedLibrary("z"),
+            ],
+        ),
         .target(
             name: "Zip",
             dependencies: ["Minizip"],
             path: "Zip",
-            exclude: ["minizip", "zlib"]),
+            exclude: ["minizip", "zlib"],
+            swiftSettings: swiftSettings,
+        ),
         .testTarget(
             name: "ZipTests",
             dependencies: ["Zip"],
-            path: "ZipTests"),
-    ]
+            path: "ZipTests",
+            swiftSettings: swiftSettings,
+        ),
+    ],
 )

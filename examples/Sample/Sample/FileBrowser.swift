@@ -1,166 +1,166 @@
 //
 //  FileBrowser.swift
-//  Sample
 //
-//  Created by Roy Marmelstein on 17/01/2016.
-//  Copyright © 2016 Roy Marmelstein. All rights reserved.
+//  Copyright © 2016 Rivia Corp s.r.o.
 //
+
+// The legacy sample uses a storyboard and does not generate asset symbols.
+// swiftlint:disable prohibited_interface_builder prefer_asset_symbols object_literal
 
 import UIKit
 import Zip
 
-class FileBrowser: UIViewController, UITableViewDataSource, UITableViewDelegate {
-    
+final class FileBrowser: UIViewController, UITableViewDataSource, UITableViewDelegate {
     // IBOutlets
-    @IBOutlet weak var tableView: UITableView!
-    @IBOutlet weak var selectionCounter: UIBarButtonItem!
-    @IBOutlet weak var zipButton: UIBarButtonItem!
-    @IBOutlet weak var unzipButton: UIBarButtonItem!
-    
-    let fileManager = FileManager.default
-    
-    var path: URL? {
+    @IBOutlet private var tableView: UITableView!
+    @IBOutlet private var selectionCounter: UIBarButtonItem!
+    @IBOutlet private var zipButton: UIBarButtonItem!
+    @IBOutlet private var unzipButton: UIBarButtonItem!
+
+    let fileManager: FileManager = .default
+
+    var path: URL? = nil {
         didSet {
-            updateFiles()
+            self.updateFiles()
         }
     }
 
-    
-    var files = [String]()
-    
-    var selectedFiles = [String]()
-    
-    //MARK: Lifecycle
-    
+    var files: [String] = []
+
+    var selectedFiles: [String] = []
+
+    // MARK: Lifecycle
+
     override func viewDidLoad() {
+        super.viewDidLoad()
         if self.path == nil {
-            let documentsUrl = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0] as URL
-            self.path = documentsUrl
+            let documentsURL: URL = self.fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0] as URL
+            self.path = documentsURL
         }
-        updateSelection()
+        self.updateSelection()
     }
-    
-    //MARK: File manager
-    
+
+    // MARK: File manager
+
     func updateFiles() {
-        if let filePath = path {
-            var tempFiles = [String]()
-            do  {
-                self.title = filePath.lastPathComponent
-                tempFiles = try self.fileManager.contentsOfDirectory(atPath: filePath.path)
+        if let path {
+            var tempFiles: [String] = []
+            do {
+                self.title = path.lastPathComponent
+                tempFiles = try self.fileManager.contentsOfDirectory(atPath: path.path)
             } catch {
-                if filePath.path == "/System" {
+                if path.path == "/System" {
                     tempFiles = ["Library"]
                 }
-                if filePath.path == "/Library" {
+                if path.path == "/Library" {
                     tempFiles = ["Preferences"]
                 }
-                if filePath.path == "/var" {
+                if path.path == "/var" {
                     tempFiles = ["mobile"]
                 }
-                if filePath.path == "/usr" {
+                if path.path == "/usr" {
                     tempFiles = ["lib", "libexec", "bin"]
                 }
             }
-            self.files = tempFiles.sorted(){$0 < $1}
-            tableView.reloadData()
+            self.files = tempFiles.sorted { $0 < $1 }
+            self.tableView.reloadData()
         }
     }
-    
-    //MARK: UITableView Data Source and Delegate
-    
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
+
+    // MARK: UITableView Data Source and Delegate
+
+    func numberOfSections(in _: UITableView) -> Int {
+        1
     }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return files.count
+
+    func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
+        self.files.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cellIdentifier = "FileCell"
-        var cell = UITableViewCell(style: .subtitle, reuseIdentifier: cellIdentifier)
+        let cellIdentifier: String = "FileCell"
+        var cell: UITableViewCell = .init(style: .subtitle, reuseIdentifier: cellIdentifier)
         if let reuseCell = tableView.dequeueReusableCell(withIdentifier: cellIdentifier) {
             cell = reuseCell
         }
-        guard let path = path else {
+        guard let path else {
             return cell
         }
+
         cell.selectionStyle = .none
-        let filePath = files[(indexPath as NSIndexPath).row]
-        let newPath = path.appendingPathComponent(filePath).path
+        let filePath: String = self.files[indexPath.row]
+        let newPath: String = path.appendingPathComponent(filePath).path
         var isDirectory: ObjCBool = false
-        fileManager.fileExists(atPath: newPath, isDirectory: &isDirectory)
-        cell.textLabel?.text = files[(indexPath as NSIndexPath).row]
+        self.fileManager.fileExists(atPath: newPath, isDirectory: &isDirectory)
+        cell.textLabel?.text = self.files[indexPath.row]
         if isDirectory.boolValue {
             cell.imageView?.image = UIImage(named: "Folder")
-        }
-        else {
+        } else {
             cell.imageView?.image = UIImage(named: "File")
         }
-        cell.backgroundColor = (selectedFiles.contains(filePath)) ? UIColor(white: 0.9, alpha: 1.0):UIColor.white
+        cell.backgroundColor = (self.selectedFiles.contains(filePath)) ? UIColor(white: 0.9, alpha: 1.0) : UIColor.white
         return cell
     }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let filePath = files[(indexPath as NSIndexPath).row]
+
+    func tableView(_: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let filePath: String = self.files[indexPath.row]
         if let index = selectedFiles.firstIndex(of: filePath), selectedFiles.contains(filePath) {
-            selectedFiles.remove(at: index)
+            self.selectedFiles.remove(at: index)
+        } else {
+            self.selectedFiles.append(filePath)
         }
-        else {
-            selectedFiles.append(filePath)
-        }
-        updateSelection()
+        self.updateSelection()
     }
-    
+
     func updateSelection() {
-        tableView.reloadData()
-        selectionCounter.title = "\(selectedFiles.count) Selected"
+        self.tableView.reloadData()
+        self.selectionCounter.title = "\(self.selectedFiles.count) Selected"
 
-        zipButton.isEnabled = (selectedFiles.count > 0)
-        if (selectedFiles.count == 1) {
-            let filePath = selectedFiles.first
-            let pathExtension = path!.appendingPathComponent(filePath!).pathExtension
+        self.zipButton.isEnabled = (!self.selectedFiles.isEmpty)
+        if self.selectedFiles.count == 1 {
+            let filePath: String? = self.selectedFiles.first
+            let pathExtension: String = self.path!.appendingPathComponent(filePath!).pathExtension
             if pathExtension == "zip" {
-                unzipButton.isEnabled = true
+                self.unzipButton.isEnabled = true
+            } else {
+                self.unzipButton.isEnabled = false
             }
-            else {
-                unzipButton.isEnabled = false
-            }
-        }
-        else {
-            unzipButton.isEnabled = false
+        } else {
+            self.unzipButton.isEnabled = false
         }
     }
-    
-    //MARK: Actions
-    
-    @IBAction func unzipSelection(_ sender: AnyObject) {
-        let filePath = selectedFiles.first
-        let pathURL = path!.appendingPathComponent(filePath!)
+
+    // MARK: Actions
+
+    @IBAction
+    private func unzipSelection(_: AnyObject) {
+        let filePath: String? = self.selectedFiles.first
+        let pathURL: URL = self.path!.appendingPathComponent(filePath!)
         do {
-            let _ = try Zip.quickUnzipFile(pathURL)
+            _ = try Zip.quickUnzipFile(pathURL)
             self.selectedFiles.removeAll()
-            updateSelection()
-            updateFiles()
-        } catch {
-            print("ERROR")
-        }
-    }
-    
-    @IBAction func zipSelection(_ sender: AnyObject) {
-        var urlPaths = [URL]()
-        for filePath in selectedFiles {
-            urlPaths.append(path!.appendingPathComponent(filePath))
-        }
-        do {
-            let _ = try Zip.quickZipFiles(urlPaths, fileName: "Archive")
-            self.selectedFiles.removeAll()
-            updateSelection()
-            updateFiles()
+            self.updateSelection()
+            self.updateFiles()
         } catch {
             print("ERROR")
         }
     }
 
+    @IBAction
+    private func zipSelection(_: AnyObject) {
+        var urlPaths: [URL] = []
+        for filePath in self.selectedFiles {
+            urlPaths.append(self.path!.appendingPathComponent(filePath))
+        }
+        do {
+            _ = try Zip.quickZipFiles(urlPaths, fileName: "Archive")
+            self.selectedFiles.removeAll()
+            self.updateSelection()
+            self.updateFiles()
+        } catch {
+            print("ERROR")
+        }
+    }
 }
+
+// swiftlint:enable prohibited_interface_builder prefer_asset_symbols object_literal
